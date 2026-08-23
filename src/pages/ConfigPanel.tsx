@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { open } from '@tauri-apps/plugin-dialog';
 import {
   AlertCircle,
   Check,
@@ -8,6 +9,7 @@ import {
   Clock3,
   Eye,
   EyeOff,
+  FolderOpen,
   KeyRound,
   Link2,
   LockKeyhole,
@@ -124,6 +126,7 @@ export function ConfigPanelPage() {
   const [tlsCertDraft, setTlsCertDraft] = useState('');
   const [tlsKeyDraft, setTlsKeyDraft] = useState('');
   const [tlsError, setTlsError] = useState('');
+  const [tlsFileSelecting, setTlsFileSelecting] = useState<'cert' | 'key' | null>(null);
   const [tlsSavedStatusVisible, setTlsSavedStatusVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -516,6 +519,35 @@ export function ConfigPanelPage() {
       void loadTlsSettings();
     } finally {
       setBusyAction(null);
+    }
+  };
+
+  const selectTlsFile = async (target: 'cert' | 'key') => {
+    if (tlsSettings === null || busyAction !== null || tlsFileSelecting !== null) return;
+    setTlsFileSelecting(target);
+    setTlsError('');
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        title: target === 'cert'
+          ? t('config.tls.selectCertTitle')
+          : t('config.tls.selectKeyTitle'),
+        filters: [{
+          name: target === 'cert' ? t('config.tls.certFile') : t('config.tls.keyFile'),
+          extensions: target === 'cert' ? ['pem', 'crt', 'cer'] : ['pem', 'key'],
+        }],
+      });
+      if (typeof selected !== 'string') return;
+      setTlsSavedStatusVisible(false);
+      if (target === 'cert') setTlsCertDraft(selected);
+      else setTlsKeyDraft(selected);
+    } catch (error) {
+      const message = t('config.tls.error.selectFileFailed', { error: String(error) });
+      setTlsError(message);
+      showNotice(message, 'error');
+    } finally {
+      setTlsFileSelecting(null);
     }
   };
 
@@ -1413,7 +1445,7 @@ export function ConfigPanelPage() {
               <button
                 type="button"
                 className="primary-button compact-button"
-                disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || !tlsSettingsDirty}
+                disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || tlsFileSelecting !== null || !tlsSettingsDirty}
                 onClick={() => void saveTlsSettings()}
               >
                 <Check size={16} aria-hidden="true" />
@@ -1452,38 +1484,64 @@ export function ConfigPanelPage() {
 
             {tlsEnabledDraft ? (
               <div className="config-tls-fields">
-                <label className="config-network-field">
+                <div className="config-network-field">
                   <span>{t('config.tls.cert')}</span>
-                  <input
-                    className={`config-network-input ${tlsError && !tlsCertDraft.trim() ? 'error' : ''}`}
-                    type="text"
-                    value={tlsCertDraft}
-                    disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
-                    placeholder={t('config.tls.certPlaceholder')}
-                    onChange={(event) => {
-                      setTlsSavedStatusVisible(false);
-                      setTlsError('');
-                      setTlsCertDraft(event.currentTarget.value);
-                    }}
-                  />
+                  <div className="config-tls-path-control">
+                    <input
+                      className={`config-network-input ${tlsError && !tlsCertDraft.trim() ? 'error' : ''}`}
+                      type="text"
+                      value={tlsCertDraft}
+                      aria-label={t('config.tls.cert')}
+                      disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || tlsFileSelecting !== null}
+                      placeholder={t('config.tls.certPlaceholder')}
+                      onChange={(event) => {
+                        setTlsSavedStatusVisible(false);
+                        setTlsError('');
+                        setTlsCertDraft(event.currentTarget.value);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="secondary-button compact-button config-tls-browse-button"
+                      disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || tlsFileSelecting !== null}
+                      title={t('config.tls.selectCertTitle')}
+                      onClick={() => void selectTlsFile('cert')}
+                    >
+                      <FolderOpen size={16} aria-hidden="true" />
+                      {tlsFileSelecting === 'cert' ? t('common.processing') : t('config.tls.browse')}
+                    </button>
+                  </div>
                   <small>{t('config.tls.certHint')}</small>
-                </label>
-                <label className="config-network-field">
+                </div>
+                <div className="config-network-field">
                   <span>{t('config.tls.key')}</span>
-                  <input
-                    className={`config-network-input ${tlsError && !tlsKeyDraft.trim() ? 'error' : ''}`}
-                    type="text"
-                    value={tlsKeyDraft}
-                    disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
-                    placeholder={t('config.tls.keyPlaceholder')}
-                    onChange={(event) => {
-                      setTlsSavedStatusVisible(false);
-                      setTlsError('');
-                      setTlsKeyDraft(event.currentTarget.value);
-                    }}
-                  />
+                  <div className="config-tls-path-control">
+                    <input
+                      className={`config-network-input ${tlsError && !tlsKeyDraft.trim() ? 'error' : ''}`}
+                      type="text"
+                      value={tlsKeyDraft}
+                      aria-label={t('config.tls.key')}
+                      disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || tlsFileSelecting !== null}
+                      placeholder={t('config.tls.keyPlaceholder')}
+                      onChange={(event) => {
+                        setTlsSavedStatusVisible(false);
+                        setTlsError('');
+                        setTlsKeyDraft(event.currentTarget.value);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="secondary-button compact-button config-tls-browse-button"
+                      disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || tlsFileSelecting !== null}
+                      title={t('config.tls.selectKeyTitle')}
+                      onClick={() => void selectTlsFile('key')}
+                    >
+                      <FolderOpen size={16} aria-hidden="true" />
+                      {tlsFileSelecting === 'key' ? t('common.processing') : t('config.tls.browse')}
+                    </button>
+                  </div>
                   <small>{t('config.tls.keyHint')}</small>
-                </label>
+                </div>
               </div>
             ) : null}
 
