@@ -5,7 +5,6 @@ export type ClientApiProfile = {
   name: string;
   description: string;
   baseUrl: string;
-  lanUrl: string | null;
 };
 
 const safeLocalPort = (port: number) =>
@@ -20,9 +19,6 @@ const normalizedConnectHost = (listenHost: string) => {
 
 const urlHost = (host: string) => host.includes(':') ? `[${host}]` : host;
 
-const isLoopbackHost = (host: string) =>
-  host === '127.0.0.1' || host === '::1' || host.toLowerCase() === 'localhost';
-
 export function webUiManagementUrl(
   port: number,
   tlsEnabled = false,
@@ -35,7 +31,6 @@ export function webUiManagementUrl(
 
 export function clientApiProfiles(
   port: number,
-  lanIpv4?: string | null,
   tlsEnabled = false,
   listenHost = '127.0.0.1',
 ): ClientApiProfile[] {
@@ -43,15 +38,6 @@ export function clientApiProfiles(
   const scheme = tlsEnabled ? 'https' : 'http';
   const connectHost = normalizedConnectHost(listenHost);
   const origin = `${scheme}://${urlHost(connectHost)}:${safePort}`;
-  const wildcardListen = !listenHost.trim()
-    || listenHost.trim() === '0.0.0.0'
-    || listenHost.trim().replace(/^\[|\]$/g, '') === '::';
-  const lanHost = lanIpv4?.trim() || null;
-  const lanOrigin = !wildcardListen && !isLoopbackHost(connectHost)
-    ? origin
-    : lanHost && !isLoopbackHost(lanHost)
-      ? `${scheme}://${urlHost(lanHost)}:${safePort}`
-      : null;
 
   return [
     {
@@ -59,21 +45,18 @@ export function clientApiProfiles(
       name: 'OpenAI',
       description: translate(getCurrentLocale(), 'kernel.access.openaiDescription'),
       baseUrl: `${origin}/v1`,
-      lanUrl: lanOrigin ? `${lanOrigin}/v1` : null,
     },
     {
       id: 'claude',
       name: 'Claude',
       description: translate(getCurrentLocale(), 'kernel.access.claudeDescription'),
       baseUrl: origin,
-      lanUrl: lanOrigin,
     },
     {
       id: 'gemini',
       name: 'Gemini',
       description: translate(getCurrentLocale(), 'kernel.access.geminiDescription'),
       baseUrl: origin,
-      lanUrl: lanOrigin,
     },
   ];
 }
