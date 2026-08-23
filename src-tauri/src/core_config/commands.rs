@@ -144,6 +144,89 @@ pub(crate) fn save_network_routing_settings(
 }
 
 #[tauri::command]
+pub(crate) fn save_network_endpoint_settings(
+    gui_config_state: tauri::State<'_, GuiConfigState>,
+    cache: tauri::State<'_, AgentConfigStatusCache>,
+    settings: GuiNetworkEndpointSettings,
+) -> Result<CoreConfigView, String> {
+    if settings.port == 0 {
+        return Err("Port must be between 1 and 65535".to_string());
+    }
+    let host = normalize_optional_config_string(settings.host, "Listen IP")?;
+    if host.parse::<IpAddr>().is_err() {
+        return Err("Listen IP must be a valid IPv4 or IPv6 address".to_string());
+    }
+    let proxy_url = normalize_optional_config_string(settings.proxy_url, "Proxy URL")?;
+    let previous = gui_config_state.snapshot()?;
+    let mut next = previous.clone();
+    next.host = host;
+    next.allow_lan = !is_loopback_host(&next.host);
+    next.port = settings.port;
+    next.proxy_url = proxy_url;
+    validate_gui_config(&next)?;
+    patch_core_network_endpoint_settings(&next)?;
+    let config = match gui_config_state.update_network_endpoint(&next) {
+        Ok(config) => config,
+        Err(error) => {
+            let rollback_error = patch_core_network_endpoint_settings(&previous).err();
+            return Err(config_update_error_with_rollback(error, rollback_error));
+        }
+    };
+    if config.host != previous.host || config.port != previous.port {
+        if let Err(error) = cache.clear() {
+            eprintln!("Failed to clear agent configuration status cache: {error}");
+        }
+    }
+    Ok(CoreConfigView::from(&config))
+}
+
+#[tauri::command]
+pub(crate) fn save_retry_settings(
+    gui_config_state: tauri::State<'_, GuiConfigState>,
+    settings: GuiRetrySettings,
+) -> Result<CoreConfigView, String> {
+    let previous = gui_config_state.snapshot()?;
+    let mut next = previous.clone();
+    next.request_retry = settings.request_retry;
+    next.max_retry_credentials = settings.max_retry_credentials;
+    next.max_retry_interval = settings.max_retry_interval;
+    next.streaming_bootstrap_retries = settings.streaming_bootstrap_retries;
+    patch_core_retry_settings(&next)?;
+    let config = match gui_config_state.update_retry_settings(&next) {
+        Ok(config) => config,
+        Err(error) => {
+            let rollback_error = patch_core_retry_settings(&previous).err();
+            return Err(config_update_error_with_rollback(error, rollback_error));
+        }
+    };
+    Ok(CoreConfigView::from(&config))
+}
+
+#[tauri::command]
+pub(crate) fn save_session_routing_settings(
+    gui_config_state: tauri::State<'_, GuiConfigState>,
+    settings: GuiSessionRoutingSettings,
+) -> Result<CoreConfigView, String> {
+    let ttl = normalize_optional_config_string(
+        settings.routing_session_affinity_ttl,
+        "Session affinity TTL",
+    )?;
+    let previous = gui_config_state.snapshot()?;
+    let mut next = previous.clone();
+    next.routing_session_affinity = settings.routing_session_affinity;
+    next.routing_session_affinity_ttl = ttl;
+    patch_core_session_routing_settings(&next)?;
+    let config = match gui_config_state.update_session_routing(&next) {
+        Ok(config) => config,
+        Err(error) => {
+            let rollback_error = patch_core_session_routing_settings(&previous).err();
+            return Err(config_update_error_with_rollback(error, rollback_error));
+        }
+    };
+    Ok(CoreConfigView::from(&config))
+}
+
+#[tauri::command]
 pub(crate) fn get_core_config_settings(
     gui_config_state: tauri::State<'_, GuiConfigState>,
 ) -> Result<CoreConfigView, String> {

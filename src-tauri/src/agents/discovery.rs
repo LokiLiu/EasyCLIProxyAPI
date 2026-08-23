@@ -1365,10 +1365,31 @@ pub(crate) fn agent_has_managed_marker(
 
 pub(crate) fn is_managed_agent_base_url(value: &str) -> bool {
     let value = value.trim().to_ascii_lowercase();
-    value.starts_with("http://127.0.0.1:")
+    if value.starts_with("http://127.0.0.1:")
         || value.starts_with("http://localhost:")
         || value.starts_with("https://127.0.0.1:")
         || value.starts_with("https://localhost:")
+    {
+        return true;
+    }
+    #[cfg(not(test))]
+    {
+        let Ok(settings) = read_installed_core_config_settings() else {
+            return false;
+        };
+        let host = core_connect_host(&settings.host);
+        let host = if host.contains(':') {
+            format!("[{host}]")
+        } else {
+            host
+        };
+        value.starts_with(&format!("http://{host}:"))
+            || value.starts_with(&format!("https://{host}:"))
+    }
+    #[cfg(test)]
+    {
+        false
+    }
 }
 
 pub(crate) fn inspect_managed_toml_model_marker(

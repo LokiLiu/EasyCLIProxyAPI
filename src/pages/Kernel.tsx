@@ -56,6 +56,7 @@ type MessageType = 'info' | 'success' | 'error';
 type CoreProcessCommand = 'start_core_process' | 'stop_core_process' | 'restart_core_process';
 
 type GuiSettings = {
+  host: string;
   port: number;
   allowLan: boolean;
   runOnStartup: boolean;
@@ -133,6 +134,7 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
   const [bundledCoreError, setBundledCoreError] = useState('');
   const [checkingLatest, setCheckingLatest] = useState(Boolean(latestCheckPromise));
   const [allowLanAccess, setAllowLanAccess] = useState(false);
+  const [listenHost, setListenHost] = useState('127.0.0.1');
   const [customPort, setCustomPort] = useState('8317');
   const [installing, setInstalling] = useState(false);
   const [processBusy, setProcessBusy] = useState(false);
@@ -302,6 +304,12 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
       setLanIpChecked(false);
       return;
     }
+    const normalizedListenHost = listenHost.trim().replace(/^\[|\]$/g, '');
+    if (normalizedListenHost !== '0.0.0.0' && normalizedListenHost !== '::') {
+      setLanIpv4(null);
+      setLanIpChecked(true);
+      return;
+    }
 
     setLanIpChecked(false);
     invoke<string | null>('get_lan_ipv4')
@@ -324,7 +332,7 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
     return () => {
       disposed = true;
     };
-  }, [allowLanAccess]);
+  }, [allowLanAccess, listenHost]);
 
   const runCoreProcessCommand = async (
     command: CoreProcessCommand,
@@ -362,6 +370,7 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
     try {
       const settings = await invoke<GuiSettings>('get_gui_settings');
       setAllowLanAccess(settings.allowLan);
+      setListenHost(settings.host);
       setCustomPort(String(settings.port));
       savedPortRef.current = settings.port;
     } catch {}
@@ -719,6 +728,7 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
       : savedPortRef.current,
     allowLanAccess ? lanIpv4 : null,
     tlsEnabled,
+    listenHost,
   );
   const apiProfileIcons = {
     openai: openaiIcon,

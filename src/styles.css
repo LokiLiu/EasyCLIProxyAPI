@@ -1769,20 +1769,34 @@ textarea:focus-visible {
   gap: 18px;
 }
 
-.config-tls-panel {
-  display: grid;
-  gap: 18px;
-}
-
 .config-tls-content {
   display: grid;
   gap: 16px;
 }
 
 .config-tls-toggle-row {
-  border: 1px solid var(--theme-d5d2cb);
-  border-radius: 8px;
-  background: var(--theme-fffdf8);
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+}
+
+.config-tls-section-heading,
+.config-section-heading-with-actions {
+  justify-content: space-between;
+}
+
+.config-tls-section-title,
+.config-network-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-tls-section-title h3,
+.config-network-section-title h3 {
+  margin: 0;
+  font-size: var(--font-size-section);
+  line-height: var(--line-height-body);
 }
 
 .config-tls-fields {

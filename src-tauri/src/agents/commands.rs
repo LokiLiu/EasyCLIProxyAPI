@@ -589,7 +589,7 @@ pub(crate) async fn fetch_agent_models(
         .danger_accept_invalid_certs(tls_enabled)
         .build()
         .map_err(|error| format!("创建模型列表客户端失败: {error}"))?;
-    let base_url = core_loopback_origin(port, tls_enabled);
+    let base_url = managed_core_loopback_origin(port);
     let endpoints = [
         format!("{base_url}/v1/models"),
         format!("{base_url}/models"),
@@ -642,7 +642,7 @@ pub(crate) async fn fetch_codex_runtime_models(
         .danger_accept_invalid_certs(tls_enabled)
         .build()
         .map_err(|error| format!("创建 Codex 模型列表客户端失败: {error}"))?;
-    let base_url = core_loopback_origin(port, tls_enabled);
+    let base_url = managed_core_loopback_origin(port);
     let endpoints = [
         format!("{base_url}/v1/models"),
         format!("{base_url}/models"),

@@ -40,4 +40,26 @@ describe('客户端 API 接入信息', () => {
       'https://127.0.0.1:9527/management.html#/login',
     );
   });
+
+  it('uses the configured listen IP for API and WebUI URLs', () => {
+    const [openai] = clientApiProfiles(9527, null, true, '192.168.1.20');
+
+    expect(openai.baseUrl).toBe('https://192.168.1.20:9527/v1');
+    expect(openai.lanUrl).toBe('https://192.168.1.20:9527/v1');
+    expect(webUiManagementUrl(9527, true, '192.168.1.20')).toBe(
+      'https://192.168.1.20:9527/management.html#/login',
+    );
+  });
+
+  it('converts wildcard and IPv6 listen IPs to connectable URL hosts', () => {
+    expect(webUiManagementUrl(8317, false, '0.0.0.0')).toBe(
+      'http://127.0.0.1:8317/management.html#/login',
+    );
+    expect(webUiManagementUrl(8317, false, '::')).toBe(
+      'http://[::1]:8317/management.html#/login',
+    );
+    expect(clientApiProfiles(8317, null, false, '2001:db8::1')[0].baseUrl).toBe(
+      'http://[2001:db8::1]:8317/v1',
+    );
+  });
 });

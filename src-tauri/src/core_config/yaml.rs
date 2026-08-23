@@ -67,6 +67,38 @@ pub(crate) fn patch_core_network_routing_settings(config: &GuiConfigFile) -> Res
     write_yaml_if_changed(&config_path, &updated).map(|_| ())
 }
 
+fn patch_installed_core_config_with(
+    patch: impl FnOnce(&str) -> Result<Option<String>, String>,
+) -> Result<(), String> {
+    let _config_guard = lock_core_config_file()?;
+    let config_path = core_install_dir()?.join(CORE_CONFIG_FILE);
+    if !config_path.is_file() {
+        return Ok(());
+    }
+    let content = fs::read_to_string(&config_path).map_err(|err| {
+        format!(
+            "Failed to read core configuration {}: {err}",
+            path_to_string(&config_path)
+        )
+    })?;
+    let Some(updated) = patch(&content)? else {
+        return Ok(());
+    };
+    write_yaml_if_changed(&config_path, &updated).map(|_| ())
+}
+
+pub(crate) fn patch_core_network_endpoint_settings(config: &GuiConfigFile) -> Result<(), String> {
+    patch_installed_core_config_with(|content| patch_core_network_endpoint_yaml(content, config))
+}
+
+pub(crate) fn patch_core_retry_settings(config: &GuiConfigFile) -> Result<(), String> {
+    patch_installed_core_config_with(|content| patch_core_retry_yaml(content, config))
+}
+
+pub(crate) fn patch_core_session_routing_settings(config: &GuiConfigFile) -> Result<(), String> {
+    patch_installed_core_config_with(|content| patch_core_session_routing_yaml(content, config))
+}
+
 pub(crate) fn lock_core_config_file() -> Result<std::sync::MutexGuard<'static, ()>, String> {
     CORE_CONFIG_FILE_LOCK
         .lock()

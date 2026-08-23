@@ -1,7 +1,7 @@
 #[cfg(target_os = "windows")]
 use super::windows_explorer_executable;
 use super::{
-    auth_dir_path_for_core, configure_background_command, core_install_dir, core_loopback_origin,
+    auth_dir_path_for_core, configure_background_command, core_install_dir, core_origin,
     current_core_tls_settings, is_hashed_management_secret_key, open_oauth_url_inner,
     path_to_string, truncate_for_error, GuiConfigFile, GuiConfigState,
 };
@@ -284,7 +284,7 @@ pub(crate) fn management_http_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(30))
-        // Management requests are always sent to loopback. This keeps locally managed
+        // Management requests target the configured local listener. This keeps
         // self-signed/private-CA certificates usable without weakening upstream clients.
         .danger_accept_invalid_certs(true)
         .build()
@@ -304,7 +304,11 @@ pub(crate) fn management_endpoint(config: &GuiConfigFile, path: &str) -> Result<
         return Err("内核端口无效".to_string());
     }
     let path = path.trim_start_matches('/');
-    let origin = core_loopback_origin(config.port, current_core_tls_settings()?.enabled);
+    let origin = core_origin(
+        &config.host,
+        config.port,
+        current_core_tls_settings()?.enabled,
+    );
     Ok(format!("{origin}/v0/management/{path}"))
 }
 

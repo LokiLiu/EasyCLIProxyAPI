@@ -508,6 +508,51 @@ fn confirmed_network_routing_patch_updates_all_fields_together() {
 }
 
 #[test]
+fn independent_network_modules_only_patch_their_own_fields() {
+    let config = GuiConfigFile {
+        host: "192.168.1.20".to_string(),
+        port: 9527,
+        proxy_url: "socks5://127.0.0.1:7890".to_string(),
+        routing_session_affinity: true,
+        routing_session_affinity_ttl: "2h".to_string(),
+        request_retry: 7,
+        max_retry_credentials: 8,
+        max_retry_interval: 9,
+        streaming_bootstrap_retries: 10,
+        ..GuiConfigFile::default()
+    };
+    let input = "host: 127.0.0.1\nport: 8317\nproxy-url: \"\"\nrouting:\n  session-affinity: false\n  session-affinity-ttl: 1h\nrequest-retry: 1\nmax-retry-credentials: 2\nmax-retry-interval: 3\nstreaming:\n  bootstrap-retries: 4\n";
+
+    let network = patch_core_network_endpoint_yaml(input, &config)
+        .unwrap()
+        .expect("network endpoint should change");
+    let network = serde_norway::from_str::<serde_norway::Value>(&network).unwrap();
+    assert_eq!(network["host"], "192.168.1.20");
+    assert_eq!(network["port"], 9527);
+    assert_eq!(network["proxy-url"], "socks5://127.0.0.1:7890");
+    assert_eq!(network["request-retry"], 1);
+    assert_eq!(network["routing"]["session-affinity"], false);
+
+    let retry = patch_core_retry_yaml(input, &config)
+        .unwrap()
+        .expect("retry settings should change");
+    let retry = serde_norway::from_str::<serde_norway::Value>(&retry).unwrap();
+    assert_eq!(retry["request-retry"], 7);
+    assert_eq!(retry["max-retry-credentials"], 8);
+    assert_eq!(retry["max-retry-interval"], 9);
+    assert_eq!(retry["streaming"]["bootstrap-retries"], 10);
+    assert_eq!(retry["host"], "127.0.0.1");
+
+    let routing = patch_core_session_routing_yaml(input, &config)
+        .unwrap()
+        .expect("session routing should change");
+    let routing = serde_norway::from_str::<serde_norway::Value>(&routing).unwrap();
+    assert_eq!(routing["routing"]["session-affinity"], true);
+    assert_eq!(routing["routing"]["session-affinity-ttl"], "2h");
+    assert_eq!(routing["request-retry"], 1);
+}
+
+#[test]
 fn core_config_controls_preserve_comments_and_unrelated_values() {
     let input = "# Client authentication\napi-keys:\n  - old-key\n\n# Plugin runtime\nplugins:\n  enabled: false # global switch\n  dir: plugins\n\n# Credential routing\nrouting:\n  strategy: round-robin # current strategy\n  session-affinity: true\n\ndebug: true # untouched\n";
     let mut document = yaml_serde_edit::YamlValue::parse(input).unwrap();
@@ -910,6 +955,20 @@ fn core_loopback_origin_uses_the_selected_transport() {
     assert_eq!(core_loopback_origin(9527, true), "https://127.0.0.1:9527");
     assert!(is_managed_agent_base_url("https://127.0.0.1:9527/v1"));
     assert!(is_managed_agent_base_url("https://localhost:9527"));
+}
+
+#[test]
+fn core_origin_uses_connectable_custom_and_ipv6_hosts() {
+    assert_eq!(
+        core_origin("192.168.1.20", 9527, true),
+        "https://192.168.1.20:9527"
+    );
+    assert_eq!(core_origin("0.0.0.0", 8317, false), "http://127.0.0.1:8317");
+    assert_eq!(core_origin("::", 8317, false), "http://[::1]:8317");
+    assert_eq!(
+        core_origin("2001:db8::1", 8317, true),
+        "https://[2001:db8::1]:8317"
+    );
 }
 
 #[test]
