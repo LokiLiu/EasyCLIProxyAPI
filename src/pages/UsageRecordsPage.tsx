@@ -20,6 +20,7 @@ type TimelinePoint = {
   requests: number;
   success: number;
   failure: number;
+  canceled: number;
   tokens: number;
 };
 
@@ -27,6 +28,7 @@ type UsageOverview = {
   totalRequests: number;
   successCount: number;
   failureCount: number;
+  canceledCount: number;
   successRate: number;
   inputTokens: number;
   outputTokens: number;
@@ -67,6 +69,9 @@ type UsageRecord = {
   source: string;
   source_display: string;
   failed: boolean;
+  canceled: boolean;
+  failure_status: number;
+  failure_body: string;
   provider: string;
   model: string;
   alias: string;
@@ -144,6 +149,7 @@ type UsageQuery = {
   source?: string;
   api_key_hash?: string;
   failed?: boolean;
+  canceled?: boolean;
   page?: number;
   page_size?: number;
 };
@@ -259,6 +265,7 @@ export function UsageRecordsPage() {
         source: source || undefined,
         api_key_hash: apiKeyHash || undefined,
         failed: result === 'failed' ? true : result === 'success' ? false : undefined,
+        canceled: result === 'canceled' ? true : result === 'failed' ? false : undefined,
       } satisfies UsageQuery,
     };
   }, [apiKeyHash, customEnd, customStart, model, provider, range, result, source]);
@@ -397,7 +404,7 @@ export function UsageRecordsPage() {
         <select value={provider} onChange={(event) => changeFilter(setProvider, event.currentTarget.value)} aria-label="Provider"><option value="">{t('usage.filter.allProviders')}</option>{filterOptions(optionsAnalysis.providers).map((item) => <option value={item.key} key={item.key}>{item.label}</option>)}</select>
         <select value={source} onChange={(event) => changeFilter(setSource, event.currentTarget.value)} aria-label={t('usage.filter.source')}><option value="">{t('usage.filter.allSources')}</option>{filterOptions(optionsAnalysis.sources).map((item) => <option value={item.key} key={item.key}>{item.label}</option>)}</select>
         <select value={apiKeyHash} onChange={(event) => changeFilter(setApiKeyHash, event.currentTarget.value)} aria-label="API Key"><option value="">{t('usage.filter.allKeys')}</option>{filterOptions(optionsAnalysis.apiKeys).map((item) => <option value={item.key} key={item.key}>{item.label}</option>)}</select>
-        <select value={result} onChange={(event) => changeFilter(setResult, event.currentTarget.value)} aria-label={t('usage.filter.result')}><option value="all">{t('usage.filter.allResults')}</option><option value="success">{t('usage.result.success')}</option><option value="failed">{t('usage.result.failed')}</option></select>
+        <select value={result} onChange={(event) => changeFilter(setResult, event.currentTarget.value)} aria-label={t('usage.filter.result')}><option value="all">{t('usage.filter.allResults')}</option><option value="success">{t('usage.result.success')}</option><option value="failed">{t('usage.result.failed')}</option><option value="canceled">{t('usage.result.canceled')}</option></select>
         {range === 'custom' ? <div className="usage-custom-range"><input type="datetime-local" value={customStart} onChange={(event) => setCustomStart(event.currentTarget.value)} aria-label={t('usage.filter.startTime')} /><span>{t('usage.filter.to')}</span><input type="datetime-local" value={customEnd} onChange={(event) => setCustomEnd(event.currentTarget.value)} aria-label={t('usage.filter.endTime')} /></div> : null}
       </section>
 
@@ -414,7 +421,7 @@ export function UsageRecordsPage() {
 function OverviewView({ overview }: { overview: UsageOverview }) {
   const { t } = useI18n();
   const cards = [
-    { icon: Activity, label: t('usage.stat.requests'), value: compactNumber(overview.totalRequests), meta: t('usage.stat.requestMeta', { success: compactNumber(overview.successCount), failed: compactNumber(overview.failureCount) }) },
+    { icon: Activity, label: t('usage.stat.requests'), value: compactNumber(overview.totalRequests), meta: t('usage.stat.requestMeta', { success: compactNumber(overview.successCount), failed: compactNumber(overview.failureCount), canceled: compactNumber(overview.canceledCount) }) },
     { icon: Sparkles, label: t('usage.stat.tokens'), value: compactNumber(overview.totalTokens), meta: t('usage.stat.tokenMeta', { input: compactNumber(overview.inputTokens), output: compactNumber(overview.outputTokens) }) },
     { icon: ShieldCheck, label: t('usage.stat.successRate'), value: `${overview.successRate.toFixed(1)}%`, meta: t('usage.stat.reasoningMeta', { tokens: compactNumber(overview.reasoningTokens) }) },
     { icon: Clock3, label: t('usage.stat.tps'), value: `${overview.tps.toFixed(1)} TPS`, meta: t('usage.stat.performanceMeta', { rpm: overview.rpm.toFixed(2), latency: Math.round(overview.averageLatencyMs) }) },
@@ -460,9 +467,19 @@ function CategoryPanel({ title, items, compactLabels = false }: { title: string;
   return <section className={`panel usage-category-panel${compactLabels ? ' compact-labels' : ''}`}><div className="usage-section-heading"><div><strong>{title}</strong><span>{t('usage.analysis.sortedByTokens')}</span></div></div>{items.length ? <div className="usage-category-list">{items.slice(0, 10).map((item) => <div key={item.key}><span><strong title={item.label}>{item.label}</strong><small>{t('usage.analysis.itemMeta', { requests: compactNumber(item.requests), percent: total ? (item.tokens * 100 / total).toFixed(1) : '0.0', tokens: compactNumber(item.tokens) })}</small></span><i><b style={{ width: `${item.tokens * 100 / max}%` }} /></i></div>)}</div> : <UsageEmpty />}</section>;
 }
 
+function UsageResultCell({ record }: { record: UsageRecord }) {
+  const { t } = useI18n();
+  const state = record.canceled ? 'canceled' : record.failed ? 'failed' : 'success';
+  const detail = [
+    record.failure_status > 0 ? `HTTP ${record.failure_status}` : '',
+    record.failure_body.trim(),
+  ].filter(Boolean).join(' · ');
+  return <td className="usage-result-cell"><span className={`usage-result ${state}`} title={detail || undefined}>{t(`usage.result.${state}`)}</span>{detail ? <small title={detail}>{detail}</small> : null}</td>;
+}
+
 function EventsView({ events, onPage }: { events: UsageEventPage; onPage: (page: number) => void }) {
   const { t } = useI18n();
-  return <section className="panel usage-events-panel"><div className="usage-events-summary"><span>{t('usage.events.total', { count: compactNumber(events.total) })}</span><span>{t('usage.events.page', { page: events.page, total: events.totalPages })}</span></div>{events.items.length ? <div className="usage-table-wrap"><table className="usage-events-table"><thead><tr><th>{t('usage.column.time')}</th><th>{t('usage.column.model')}</th><th>Provider</th><th>{t('usage.column.source')}</th><th>API Key</th><th>{t('usage.column.input')}</th><th>{t('usage.column.output')}</th><th>{t('usage.column.reasoning')}</th><th>{t('usage.column.cache')}</th><th>{t('usage.column.total')}</th><th>{t('usage.column.result')}</th><th>{t('usage.column.latency')}</th><th>{t('usage.column.ttft')}</th></tr></thead><tbody>{events.items.map((record) => <tr key={record.id}><td>{formatTime(record.timestamp)}</td><td className="usage-stacked-cell"><strong title={record.alias || record.model}>{record.alias || record.model}</strong>{record.alias || record.reasoning_effort ? <small title={record.model}>{record.alias ? record.model : ''}{record.alias && record.reasoning_effort ? ' · ' : ''}{record.reasoning_effort}</small> : null}</td><td title={record.provider}>{record.provider || '—'}</td><td title={record.source_display || undefined}>{record.source_display || '—'}</td><td className="usage-stacked-cell"><strong title={record.api_key_remark}>{record.api_key_remark || t('usage.key.noRemark')}</strong><small>{record.api_key_display || '—'}</small></td><td>{compactNumber(record.tokens.input_tokens)}</td><td>{compactNumber(record.tokens.output_tokens)}</td><td>{compactNumber(record.tokens.reasoning_tokens)}</td><td>{compactNumber(record.tokens.cache_read_tokens)}</td><td><strong>{compactNumber(record.tokens.total_tokens)}</strong></td><td><span className={`usage-result ${record.failed ? 'failed' : 'success'}`}>{record.failed ? t('usage.result.failed') : t('usage.result.success')}</span></td><td>{record.latency_ms} ms</td><td>{record.ttft_ms == null ? '—' : `${record.ttft_ms} ms`}</td></tr>)}</tbody></table></div> : <UsageEmpty />}<div className="usage-pagination"><button type="button" className="secondary-button" disabled={events.page <= 1} onClick={() => onPage(events.page - 1)}>{t('usage.previous')}</button><button type="button" className="secondary-button" disabled={events.page >= events.totalPages} onClick={() => onPage(events.page + 1)}>{t('usage.next')}</button></div></section>;
+  return <section className="panel usage-events-panel"><div className="usage-events-summary"><span>{t('usage.events.total', { count: compactNumber(events.total) })}</span><span>{t('usage.events.page', { page: events.page, total: events.totalPages })}</span></div>{events.items.length ? <div className="usage-table-wrap"><table className="usage-events-table"><thead><tr><th>{t('usage.column.time')}</th><th>{t('usage.column.model')}</th><th>Provider</th><th>{t('usage.column.source')}</th><th>API Key</th><th>{t('usage.column.input')}</th><th>{t('usage.column.output')}</th><th>{t('usage.column.reasoning')}</th><th>{t('usage.column.cache')}</th><th>{t('usage.column.total')}</th><th>{t('usage.column.result')}</th><th>{t('usage.column.latency')}</th><th>{t('usage.column.ttft')}</th></tr></thead><tbody>{events.items.map((record) => <tr key={record.id}><td>{formatTime(record.timestamp)}</td><td className="usage-stacked-cell"><strong title={record.alias || record.model}>{record.alias || record.model}</strong>{record.alias || record.reasoning_effort ? <small title={record.model}>{record.alias ? record.model : ''}{record.alias && record.reasoning_effort ? ' · ' : ''}{record.reasoning_effort}</small> : null}</td><td title={record.provider}>{record.provider || '—'}</td><td title={record.source_display || undefined}>{record.source_display || '—'}</td><td className="usage-stacked-cell"><strong title={record.api_key_remark}>{record.api_key_remark || t('usage.key.noRemark')}</strong><small>{record.api_key_display || '—'}</small></td><td>{compactNumber(record.tokens.input_tokens)}</td><td>{compactNumber(record.tokens.output_tokens)}</td><td>{compactNumber(record.tokens.reasoning_tokens)}</td><td>{compactNumber(record.tokens.cache_read_tokens)}</td><td><strong>{compactNumber(record.tokens.total_tokens)}</strong></td><UsageResultCell record={record} /><td>{record.latency_ms} ms</td><td>{record.ttft_ms == null ? '—' : `${record.ttft_ms} ms`}</td></tr>)}</tbody></table></div> : <UsageEmpty />}<div className="usage-pagination"><button type="button" className="secondary-button" disabled={events.page <= 1} onClick={() => onPage(events.page - 1)}>{t('usage.previous')}</button><button type="button" className="secondary-button" disabled={events.page >= events.totalPages} onClick={() => onPage(events.page + 1)}>{t('usage.next')}</button></div></section>;
 }
 
 type PriceDraft = {

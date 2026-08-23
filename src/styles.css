@@ -6741,7 +6741,7 @@ textarea:focus-visible {
 
 .usage-events-table {
   width: 100%;
-  min-width: 1140px;
+  min-width: 1240px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: var(--font-size-caption);
@@ -6805,7 +6805,7 @@ textarea:focus-visible {
 }
 
 .usage-events-table th:nth-child(11) {
-  width: 72px;
+  width: 172px;
 }
 
 .usage-events-table th:nth-child(12) {
@@ -6878,6 +6878,23 @@ textarea:focus-visible {
 .usage-result.failed {
   background: var(--theme-fff1ee);
   color: var(--theme-9f2d20);
+}
+
+.usage-result.canceled {
+  background: var(--theme-f4f1ea);
+  color: var(--theme-7a746c);
+}
+
+.usage-events-table .usage-result-cell {
+  overflow: hidden;
+  text-align: left;
+}
+
+.usage-result-cell > small {
+  display: block;
+  margin-top: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .usage-pagination {
