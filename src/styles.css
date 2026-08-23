@@ -1769,7 +1769,7 @@ textarea:focus-visible {
   gap: 18px;
 }
 
-.config-advanced-panel {
+.config-tls-panel {
   display: grid;
   gap: 18px;
 }
@@ -1822,6 +1822,10 @@ textarea:focus-visible {
   border: 1px solid var(--theme-d5d2cb);
   border-radius: 8px;
   background: var(--theme-fffdf8);
+}
+
+.config-network-section[hidden] {
+  display: none;
 }
 
 .config-network-section-heading {

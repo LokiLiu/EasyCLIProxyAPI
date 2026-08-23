@@ -59,7 +59,7 @@ type ConfigAction =
   | 'software'
   | null;
 type NoticeTone = 'success' | 'error';
-type ConfigSubpage = 'general' | 'network' | 'advanced' | 'software' | 'aliases';
+type ConfigSubpage = 'general' | 'network' | 'routing' | 'software' | 'aliases';
 type CloseBehavior = 'ask' | 'exit' | 'minimize-to-tray';
 type NetworkDraftField =
   | 'port'
@@ -749,6 +749,18 @@ export function ConfigPanelPage() {
         </button>
         <button
           type="button"
+          id="config-subpage-tab-routing"
+          role="tab"
+          className={activeSubpage === 'routing' ? 'active' : ''}
+          aria-selected={activeSubpage === 'routing'}
+          aria-controls="config-subpage-panel-routing"
+          tabIndex={activeSubpage === 'routing' ? 0 : -1}
+          onClick={() => setActiveSubpage('routing')}
+        >
+          {t('config.tabs.routing')}
+        </button>
+        <button
+          type="button"
           id="config-subpage-tab-aliases"
           role="tab"
           className={activeSubpage === 'aliases' ? 'active' : ''}
@@ -758,18 +770,6 @@ export function ConfigPanelPage() {
           onClick={() => setActiveSubpage('aliases')}
         >
           {t('app.nav.thinkingAliases')}
-        </button>
-        <button
-          type="button"
-          id="config-subpage-tab-advanced"
-          role="tab"
-          className={activeSubpage === 'advanced' ? 'active' : ''}
-          aria-selected={activeSubpage === 'advanced'}
-          aria-controls="config-subpage-panel-advanced"
-          tabIndex={activeSubpage === 'advanced' ? 0 : -1}
-          onClick={() => setActiveSubpage('advanced')}
-        >
-          {t('config.tabs.advanced')}
         </button>
         <button
           type="button"
@@ -1013,18 +1013,20 @@ export function ConfigPanelPage() {
           </div>
         </section>
         </div>
-      ) : activeSubpage === 'network' ? (
+      ) : activeSubpage === 'network' || activeSubpage === 'routing' ? (
         <div
           className="config-subpage-panel config-network-subpage"
-          id="config-subpage-panel-network"
+          id={`config-subpage-panel-${activeSubpage}`}
           role="tabpanel"
-          aria-labelledby="config-subpage-tab-network"
+          aria-labelledby={`config-subpage-tab-${activeSubpage}`}
         >
       <section className="panel config-network-panel">
         <div className="config-panel-heading">
           <div className="config-heading-title">
-            <Network size={18} aria-hidden="true" />
-            <h2>{t('config.network.title')}</h2>
+            {activeSubpage === 'network'
+              ? <Network size={18} aria-hidden="true" />
+              : <Route size={18} aria-hidden="true" />}
+            <h2>{activeSubpage === 'network' ? t('config.network.title') : t('config.network.routingSection')}</h2>
           </div>
           <div className="config-heading-actions">
             {networkStatusLabel ? (
@@ -1047,7 +1049,11 @@ export function ConfigPanelPage() {
         </div>
 
         <div className="config-network-sections">
-          <section className="config-network-section" aria-labelledby="config-network-section-title">
+          <section
+            className="config-network-section"
+            aria-labelledby="config-network-section-title"
+            hidden={activeSubpage !== 'network'}
+          >
             <div className="config-network-section-heading">
               <Network size={16} aria-hidden="true" />
               <h3 id="config-network-section-title">{t('config.network.networkSection')}</h3>
@@ -1130,7 +1136,11 @@ export function ConfigPanelPage() {
             </div>
           </section>
 
-          <section className="config-network-section" aria-labelledby="config-routing-section-title">
+          <section
+            className="config-network-section"
+            aria-labelledby="config-routing-section-title"
+            hidden={activeSubpage !== 'routing'}
+          >
             <div className="config-network-section-heading">
               <Route size={16} aria-hidden="true" />
               <h3 id="config-routing-section-title">{t('config.network.routingSection')}</h3>
@@ -1213,7 +1223,11 @@ export function ConfigPanelPage() {
             </div>
           </section>
 
-          <section className="config-network-section" aria-labelledby="config-retry-section-title">
+          <section
+            className="config-network-section"
+            aria-labelledby="config-retry-section-title"
+            hidden={activeSubpage !== 'network'}
+          >
             <div className="config-network-section-heading">
               <RefreshCw size={16} aria-hidden="true" />
               <h3 id="config-retry-section-title">{t('config.network.retrySection')}</h3>
@@ -1334,108 +1348,102 @@ export function ConfigPanelPage() {
           </section>
         </div>
       </section>
-        </div>
-      ) : activeSubpage === 'advanced' ? (
-        <div
-          className="config-subpage-panel"
-          id="config-subpage-panel-advanced"
-          role="tabpanel"
-          aria-labelledby="config-subpage-tab-advanced"
-        >
-          <section className="panel config-advanced-panel">
-            <div className="config-panel-heading">
-              <div className="config-heading-title">
-                <LockKeyhole size={18} aria-hidden="true" />
-                <h2>{t('config.advanced.title')}</h2>
+      {activeSubpage === 'network' ? (
+        <section className="panel config-tls-panel">
+          <div className="config-panel-heading">
+            <div className="config-heading-title">
+              <LockKeyhole size={18} aria-hidden="true" />
+              <h2>{t('config.tls.enable')}</h2>
+            </div>
+            <div className="config-heading-actions">
+              {tlsStatusLabel ? (
+                <span className={`state-pill ${tlsStatusIsSaved ? 'success' : ''}`}>
+                  {tlsStatusLabel}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                className="primary-button compact-button"
+                disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || !tlsSettingsDirty}
+                onClick={() => void saveTlsSettings()}
+              >
+                <Check size={16} aria-hidden="true" />
+                {busyAction === 'tls' ? t('common.saving') : t('config.network.confirmSave')}
+              </button>
+            </div>
+          </div>
+
+          <div className="config-tls-content">
+            <div className="config-software-setting-row config-tls-toggle-row">
+              <div className="config-software-setting-copy">
+                <span className="config-software-setting-icon" aria-hidden="true">
+                  <ShieldCheck size={18} />
+                </span>
+                <div>
+                  <strong>{t('config.tls.enable')}</strong>
+                  <small>{t('config.tls.enableDescription')}</small>
+                </div>
               </div>
-              <div className="config-heading-actions">
-                {tlsStatusLabel ? (
-                  <span className={`state-pill ${tlsStatusIsSaved ? 'success' : ''}`}>
-                    {tlsStatusLabel}
-                  </span>
-                ) : null}
-                <button
-                  type="button"
-                  className="primary-button compact-button"
-                  disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || !tlsSettingsDirty}
-                  onClick={() => void saveTlsSettings()}
-                >
-                  <Check size={16} aria-hidden="true" />
-                  {busyAction === 'tls' ? t('common.saving') : t('config.network.confirmSave')}
-                </button>
-              </div>
+              <label className="switch-control" title={t('config.tls.enable')}>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  aria-label={t('config.tls.enable')}
+                  checked={tlsEnabledDraft}
+                  disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
+                  onChange={(event) => {
+                    setTlsSavedStatusVisible(false);
+                    setTlsError('');
+                    setTlsEnabledDraft(event.currentTarget.checked);
+                  }}
+                />
+                <span className="switch-track" />
+              </label>
             </div>
 
-            <div className="config-tls-content">
-              <div className="config-software-setting-row config-tls-toggle-row">
-                <div className="config-software-setting-copy">
-                  <span className="config-software-setting-icon" aria-hidden="true">
-                    <ShieldCheck size={18} />
-                  </span>
-                  <div>
-                    <strong>{t('config.tls.enable')}</strong>
-                    <small>{t('config.tls.enableDescription')}</small>
-                  </div>
-                </div>
-                <label className="switch-control" title={t('config.tls.enable')}>
+            {tlsEnabledDraft ? (
+              <div className="config-tls-fields">
+                <label className="config-network-field">
+                  <span>{t('config.tls.cert')}</span>
                   <input
-                    type="checkbox"
-                    role="switch"
-                    aria-label={t('config.tls.enable')}
-                    checked={tlsEnabledDraft}
+                    className={`config-network-input ${tlsError && !tlsCertDraft.trim() ? 'error' : ''}`}
+                    type="text"
+                    value={tlsCertDraft}
                     disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
+                    placeholder={t('config.tls.certPlaceholder')}
                     onChange={(event) => {
                       setTlsSavedStatusVisible(false);
                       setTlsError('');
-                      setTlsEnabledDraft(event.currentTarget.checked);
+                      setTlsCertDraft(event.currentTarget.value);
                     }}
                   />
-                  <span className="switch-track" />
+                  <small>{t('config.tls.certHint')}</small>
+                </label>
+                <label className="config-network-field">
+                  <span>{t('config.tls.key')}</span>
+                  <input
+                    className={`config-network-input ${tlsError && !tlsKeyDraft.trim() ? 'error' : ''}`}
+                    type="text"
+                    value={tlsKeyDraft}
+                    disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
+                    placeholder={t('config.tls.keyPlaceholder')}
+                    onChange={(event) => {
+                      setTlsSavedStatusVisible(false);
+                      setTlsError('');
+                      setTlsKeyDraft(event.currentTarget.value);
+                    }}
+                  />
+                  <small>{t('config.tls.keyHint')}</small>
                 </label>
               </div>
+            ) : null}
 
-              {tlsEnabledDraft ? (
-                <div className="config-tls-fields">
-                  <label className="config-network-field">
-                    <span>{t('config.tls.cert')}</span>
-                    <input
-                      className={`config-network-input ${tlsError && !tlsCertDraft.trim() ? 'error' : ''}`}
-                      type="text"
-                      value={tlsCertDraft}
-                      disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
-                      placeholder={t('config.tls.certPlaceholder')}
-                      onChange={(event) => {
-                        setTlsSavedStatusVisible(false);
-                        setTlsError('');
-                        setTlsCertDraft(event.currentTarget.value);
-                      }}
-                    />
-                    <small>{t('config.tls.certHint')}</small>
-                  </label>
-                  <label className="config-network-field">
-                    <span>{t('config.tls.key')}</span>
-                    <input
-                      className={`config-network-input ${tlsError && !tlsKeyDraft.trim() ? 'error' : ''}`}
-                      type="text"
-                      value={tlsKeyDraft}
-                      disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
-                      placeholder={t('config.tls.keyPlaceholder')}
-                      onChange={(event) => {
-                        setTlsSavedStatusVisible(false);
-                        setTlsError('');
-                        setTlsKeyDraft(event.currentTarget.value);
-                      }}
-                    />
-                    <small>{t('config.tls.keyHint')}</small>
-                  </label>
-                </div>
-              ) : null}
-
-              <div className={`config-tls-message ${tlsError ? 'error' : ''}`} role={tlsError ? 'alert' : undefined}>
-                {tlsError || t('config.tls.restartHint')}
-              </div>
+            <div className={`config-tls-message ${tlsError ? 'error' : ''}`} role={tlsError ? 'alert' : undefined}>
+              {tlsError || t('config.tls.restartHint')}
             </div>
-          </section>
+          </div>
+        </section>
+      ) : null}
         </div>
       ) : activeSubpage === 'software' ? (
         <div
