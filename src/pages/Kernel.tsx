@@ -65,6 +65,12 @@ type CoreConfigSummary = {
   apiKeys: Array<{ apiKey: string }>;
 };
 
+type CoreTlsSettings = {
+  enabled: boolean;
+  cert: string;
+  key: string;
+};
+
 const APP_RELEASE_URL = 'https://github.com/router-for-me/EasyCLIProxyAPI/releases/latest';
 
 let latestAutoCheckStarted = false;
@@ -148,6 +154,7 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
   const [showHomeApiKey, setShowHomeApiKey] = useState(false);
   const [lanIpv4, setLanIpv4] = useState<string | null>(null);
   const [lanIpChecked, setLanIpChecked] = useState(false);
+  const [tlsEnabled, setTlsEnabled] = useState(false);
   const installDialogRef = useRef<HTMLDivElement>(null);
   const savedPortRef = useRef(8317);
   const processNoticeTimerRef = useRef<number | null>(null);
@@ -223,6 +230,7 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
     void listen('config-files-changed', () => {
       if (disposed) return;
       void loadGuiSettings();
+      void loadTlsSettings();
       void refreshStatus();
       if (view === 'home') void loadHomeApiKey();
     }).then((stop) => {
@@ -234,6 +242,7 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
     loadBundledCore();
     loadInstallTask();
     loadGuiSettings();
+    void loadTlsSettings();
     void getVersion()
       .then((version) => {
         if (!disposed) setInstalledAppVersion(version);
@@ -366,6 +375,15 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
     } catch {
       setHomeApiKey(undefined);
       setHomeApiKeyError(true);
+    }
+  };
+
+  const loadTlsSettings = async () => {
+    try {
+      const settings = await invoke<CoreTlsSettings>('get_core_tls_settings');
+      setTlsEnabled(settings.enabled);
+    } catch {
+      setTlsEnabled(false);
     }
   };
 
@@ -700,6 +718,7 @@ export function KernelPage({ view = 'home' }: { view?: KernelView }) {
       ? apiPort
       : savedPortRef.current,
     allowLanAccess ? lanIpv4 : null,
+    tlsEnabled,
   );
   const apiProfileIcons = {
     openai: openaiIcon,

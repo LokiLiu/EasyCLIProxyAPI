@@ -847,6 +847,72 @@ fn optional_core_strings_are_trimmed_and_reject_control_characters() {
 }
 
 #[test]
+fn core_tls_settings_read_defaults_and_configured_values() {
+    let defaults = serde_norway::from_str::<serde_norway::Value>("host: 127.0.0.1\n").unwrap();
+    let configured = serde_norway::from_str::<serde_norway::Value>(
+        "tls:\n  enable: true\n  cert: C:/certs/server.crt\n  key: C:/certs/server.key\n",
+    )
+    .unwrap();
+
+    let defaults = core_tls_settings_from_value(&defaults).unwrap();
+    assert!(!defaults.enabled);
+    assert!(defaults.cert.is_empty());
+    assert!(defaults.key.is_empty());
+
+    let configured = core_tls_settings_from_value(&configured).unwrap();
+    assert!(configured.enabled);
+    assert_eq!(configured.cert, "C:/certs/server.crt");
+    assert_eq!(configured.key, "C:/certs/server.key");
+}
+
+#[test]
+fn tls_patch_preserves_unrelated_yaml_and_paths_when_disabled() {
+    let input = "# server\nhost: 127.0.0.1\ntls:\n  enable: true\n  cert: old.crt\n  key: old.key\ncustom:\n  keep: true\n";
+    let settings = CoreTlsSettings {
+        enabled: false,
+        cert: "new.crt".to_string(),
+        key: "new.key".to_string(),
+    };
+    let patched = patch_core_tls_settings_yaml(input, &settings)
+        .unwrap()
+        .expect("TLS settings should change");
+    let document = serde_norway::from_str::<serde_norway::Value>(&patched).unwrap();
+
+    assert!(patched.contains("# server"));
+    assert_eq!(document["tls"]["enable"], false);
+    assert_eq!(document["tls"]["cert"], "new.crt");
+    assert_eq!(document["tls"]["key"], "new.key");
+    assert_eq!(document["custom"]["keep"], true);
+}
+
+#[test]
+fn enabled_tls_requires_both_paths() {
+    let missing_key = CoreTlsSettings {
+        enabled: true,
+        cert: "server.crt".to_string(),
+        key: String::new(),
+    };
+    assert!(normalize_core_tls_settings(missing_key).is_err());
+
+    let disabled = CoreTlsSettings {
+        enabled: false,
+        cert: "  server.crt  ".to_string(),
+        key: String::new(),
+    };
+    let disabled = normalize_core_tls_settings(disabled).unwrap();
+    assert_eq!(disabled.cert, "server.crt");
+    assert!(disabled.key.is_empty());
+}
+
+#[test]
+fn core_loopback_origin_uses_the_selected_transport() {
+    assert_eq!(core_loopback_origin(8317, false), "http://127.0.0.1:8317");
+    assert_eq!(core_loopback_origin(9527, true), "https://127.0.0.1:9527");
+    assert!(is_managed_agent_base_url("https://127.0.0.1:9527/v1"));
+    assert!(is_managed_agent_base_url("https://localhost:9527"));
+}
+
+#[test]
 fn configured_proxy_supports_http_and_socks5_urls() {
     for proxy_url in ["http://127.0.0.1:8080", "socks5://127.0.0.1:7890"] {
         apply_configured_proxy(reqwest::Client::builder(), proxy_url)

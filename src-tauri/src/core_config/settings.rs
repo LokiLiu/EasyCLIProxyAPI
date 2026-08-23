@@ -163,6 +163,46 @@ pub(crate) fn normalize_optional_config_string(
     Ok(value)
 }
 
+pub(crate) fn normalize_core_tls_settings(
+    settings: CoreTlsSettings,
+) -> Result<CoreTlsSettings, String> {
+    let cert = normalize_optional_config_string(settings.cert, "TLS certificate path")?;
+    let key = normalize_optional_config_string(settings.key, "TLS private key path")?;
+    if settings.enabled && (cert.is_empty() || key.is_empty()) {
+        return Err(
+            "TLS is enabled, so both the certificate and private key paths are required"
+                .to_string(),
+        );
+    }
+    Ok(CoreTlsSettings {
+        enabled: settings.enabled,
+        cert,
+        key,
+    })
+}
+
+pub(crate) fn core_loopback_origin(port: u16, tls_enabled: bool) -> String {
+    let scheme = if tls_enabled { "https" } else { "http" };
+    format!("{scheme}://127.0.0.1:{port}")
+}
+
+pub(crate) fn managed_core_tls_enabled() -> bool {
+    #[cfg(test)]
+    {
+        false
+    }
+    #[cfg(not(test))]
+    {
+        current_core_tls_settings()
+            .map(|settings| settings.enabled)
+            .unwrap_or(false)
+    }
+}
+
+pub(crate) fn managed_core_loopback_origin(port: u16) -> String {
+    core_loopback_origin(port, managed_core_tls_enabled())
+}
+
 pub(crate) fn config_update_error_with_rollback(
     error: String,
     rollback_error: Option<String>,

@@ -21,12 +21,23 @@ describe('客户端 API 接入信息', () => {
     expect(openai.lanUrl).toBeNull();
   });
 
+  it('TLS 开启时生成 HTTPS 客户端地址', () => {
+    const profiles = clientApiProfiles(9527, '192.168.1.8', true);
+
+    expect(profiles[0].baseUrl).toBe('https://127.0.0.1:9527/v1');
+    expect(profiles[0].lanUrl).toBe('https://192.168.1.8:9527/v1');
+    expect(profiles[1].baseUrl).toBe('https://127.0.0.1:9527');
+  });
+
   it('使用当前内核端口生成 WebUI 登录地址', () => {
     expect(webUiManagementUrl(9527)).toBe(
       'http://127.0.0.1:9527/management.html#/login',
     );
     expect(webUiManagementUrl(0)).toBe(
       'http://127.0.0.1:8317/management.html#/login',
+    );
+    expect(webUiManagementUrl(9527, true)).toBe(
+      'https://127.0.0.1:9527/management.html#/login',
     );
   });
 });

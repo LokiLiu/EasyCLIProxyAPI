@@ -10,6 +10,7 @@ import {
   EyeOff,
   KeyRound,
   Link2,
+  LockKeyhole,
   Network,
   Pencil,
   Plus,
@@ -54,10 +55,11 @@ type ConfigAction =
   | 'management-secret'
   | 'routing'
   | 'network'
+  | 'tls'
   | 'software'
   | null;
 type NoticeTone = 'success' | 'error';
-type ConfigSubpage = 'general' | 'network' | 'software' | 'aliases';
+type ConfigSubpage = 'general' | 'network' | 'advanced' | 'software' | 'aliases';
 type CloseBehavior = 'ask' | 'exit' | 'minimize-to-tray';
 type NetworkDraftField =
   | 'port'
@@ -78,6 +80,12 @@ type SoftwareSettings = {
   autostartEnabled: boolean;
   startCoreOnLaunch: boolean;
   silentStartEnabled: boolean;
+};
+
+type CoreTlsSettings = {
+  enabled: boolean;
+  cert: string;
+  key: string;
 };
 
 const cleanNetworkDraft = (): NetworkDraftDirty => ({
@@ -108,6 +116,13 @@ export function ConfigPanelPage() {
   const [softwareStartCoreDraft, setSoftwareStartCoreDraft] = useState(true);
   const [softwareSilentStartDraft, setSoftwareSilentStartDraft] = useState(false);
   const [softwareSavedStatusVisible, setSoftwareSavedStatusVisible] = useState(false);
+  const [tlsSettings, setTlsSettings] = useState<CoreTlsSettings | null>(null);
+  const [tlsSettingsLoading, setTlsSettingsLoading] = useState(true);
+  const [tlsEnabledDraft, setTlsEnabledDraft] = useState(false);
+  const [tlsCertDraft, setTlsCertDraft] = useState('');
+  const [tlsKeyDraft, setTlsKeyDraft] = useState('');
+  const [tlsError, setTlsError] = useState('');
+  const [tlsSavedStatusVisible, setTlsSavedStatusVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [busyAction, setBusyAction] = useState<ConfigAction>(null);
@@ -146,10 +161,12 @@ export function ConfigPanelPage() {
     let stop: (() => void) | null = null;
     void loadSettings();
     void loadSoftwareSettings();
+    void loadTlsSettings();
     void listen('config-files-changed', () => {
       if (!disposed) {
         void loadSettings('preserve');
         void loadSoftwareSettings();
+        void loadTlsSettings();
       }
     }).then((unlisten) => {
       if (disposed) unlisten();
@@ -247,6 +264,23 @@ export function ConfigPanelPage() {
       showNotice(t('config.error.saveFailed', { error: String(error) }), 'error');
     } finally {
       setSoftwareSettingsLoading(false);
+    }
+  }
+
+  async function loadTlsSettings() {
+    setTlsSettingsLoading(true);
+    try {
+      const result = await invoke<CoreTlsSettings>('get_core_tls_settings');
+      setTlsSettings(result);
+      setTlsEnabledDraft(result.enabled);
+      setTlsCertDraft(result.cert);
+      setTlsKeyDraft(result.key);
+      setTlsError('');
+    } catch (error) {
+      setTlsSettings(null);
+      setTlsError(String(error));
+    } finally {
+      setTlsSettingsLoading(false);
     }
   }
 
@@ -428,13 +462,58 @@ export function ConfigPanelPage() {
 
   const openWebUi = async () => {
     try {
-      const latestSettings = await invoke<CoreConfigSettings>('get_core_config_settings');
+      const [latestSettings, latestTlsSettings] = await Promise.all([
+        invoke<CoreConfigSettings>('get_core_config_settings'),
+        invoke<CoreTlsSettings>('get_core_tls_settings'),
+      ]);
       applySettings(latestSettings, 'preserve');
+      setTlsSettings(latestTlsSettings);
+      setTlsEnabledDraft(latestTlsSettings.enabled);
+      setTlsCertDraft(latestTlsSettings.cert);
+      setTlsKeyDraft(latestTlsSettings.key);
       await invoke('open_external_url', {
-        url: webUiManagementUrl(latestSettings.port),
+        url: webUiManagementUrl(latestSettings.port, latestTlsSettings.enabled),
       });
     } catch (error) {
       showNotice(t('config.webuiKey.error.openFailed', { error: String(error) }), 'error');
+    }
+  };
+
+  const saveTlsSettings = async () => {
+    if (tlsSettings === null || busyAction !== null) return;
+    const cert = tlsCertDraft.trim();
+    const key = tlsKeyDraft.trim();
+    if (tlsEnabledDraft && (!cert || !key)) {
+      setTlsError(t('config.tls.error.pathsRequired'));
+      return;
+    }
+
+    setBusyAction('tls');
+    setTlsError('');
+    setTlsSavedStatusVisible(false);
+    try {
+      const result = await invoke<CoreTlsSettings>('save_core_tls_settings', {
+        settings: { enabled: tlsEnabledDraft, cert, key },
+      });
+      setTlsSettings(result);
+      setTlsEnabledDraft(result.enabled);
+      setTlsCertDraft(result.cert);
+      setTlsKeyDraft(result.key);
+      if (coreStatus?.running) {
+        const status = await invoke<CoreStatus>('restart_core_process');
+        publishStatus(status);
+        showNotice(t('config.tls.notice.savedAndRestarted'), 'success');
+      } else {
+        showNotice(t('config.tls.notice.saved'), 'success');
+      }
+      setTlsSavedStatusVisible(true);
+    } catch (error) {
+      setTlsError(String(error));
+      showNotice(t('config.error.saveFailed', { error: String(error) }), 'error');
+      void refreshStatus();
+      void loadTlsSettings();
+    } finally {
+      setBusyAction(null);
     }
   };
 
@@ -612,6 +691,24 @@ export function ConfigPanelPage() {
     && softwareSettings !== null
     && !softwareSettingsDirty
     && softwareSavedStatusVisible;
+  const tlsSettingsDirty = tlsSettings !== null && (
+    tlsEnabledDraft !== tlsSettings.enabled
+    || tlsCertDraft.trim() !== tlsSettings.cert
+    || tlsKeyDraft.trim() !== tlsSettings.key
+  );
+  const tlsStatusLabel = tlsSettingsLoading
+    ? t('common.loading')
+    : tlsSettings === null
+      ? t('common.unavailable')
+      : tlsSettingsDirty
+        ? t('config.network.unsaved')
+        : tlsSavedStatusVisible
+          ? t('config.network.saved')
+          : '';
+  const tlsStatusIsSaved = !tlsSettingsLoading
+    && tlsSettings !== null
+    && !tlsSettingsDirty
+    && tlsSavedStatusVisible;
   const networkStatusIsSaved = !loading
     && settings !== null
     && busyAction === null
@@ -661,6 +758,18 @@ export function ConfigPanelPage() {
           onClick={() => setActiveSubpage('aliases')}
         >
           {t('app.nav.thinkingAliases')}
+        </button>
+        <button
+          type="button"
+          id="config-subpage-tab-advanced"
+          role="tab"
+          className={activeSubpage === 'advanced' ? 'active' : ''}
+          aria-selected={activeSubpage === 'advanced'}
+          aria-controls="config-subpage-panel-advanced"
+          tabIndex={activeSubpage === 'advanced' ? 0 : -1}
+          onClick={() => setActiveSubpage('advanced')}
+        >
+          {t('config.tabs.advanced')}
         </button>
         <button
           type="button"
@@ -805,7 +914,7 @@ export function ConfigPanelPage() {
                 className="secondary-button compact-button"
                 disabled={loading || settings === null}
                 onClick={() => void openWebUi()}
-                title={settings ? webUiManagementUrl(settings.port) : undefined}
+                title={settings ? webUiManagementUrl(settings.port, tlsSettings?.enabled) : undefined}
               >
                 {t('config.webuiKey.open')}
               </button>
@@ -1225,6 +1334,108 @@ export function ConfigPanelPage() {
           </section>
         </div>
       </section>
+        </div>
+      ) : activeSubpage === 'advanced' ? (
+        <div
+          className="config-subpage-panel"
+          id="config-subpage-panel-advanced"
+          role="tabpanel"
+          aria-labelledby="config-subpage-tab-advanced"
+        >
+          <section className="panel config-advanced-panel">
+            <div className="config-panel-heading">
+              <div className="config-heading-title">
+                <LockKeyhole size={18} aria-hidden="true" />
+                <h2>{t('config.advanced.title')}</h2>
+              </div>
+              <div className="config-heading-actions">
+                {tlsStatusLabel ? (
+                  <span className={`state-pill ${tlsStatusIsSaved ? 'success' : ''}`}>
+                    {tlsStatusLabel}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  className="primary-button compact-button"
+                  disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null || !tlsSettingsDirty}
+                  onClick={() => void saveTlsSettings()}
+                >
+                  <Check size={16} aria-hidden="true" />
+                  {busyAction === 'tls' ? t('common.saving') : t('config.network.confirmSave')}
+                </button>
+              </div>
+            </div>
+
+            <div className="config-tls-content">
+              <div className="config-software-setting-row config-tls-toggle-row">
+                <div className="config-software-setting-copy">
+                  <span className="config-software-setting-icon" aria-hidden="true">
+                    <ShieldCheck size={18} />
+                  </span>
+                  <div>
+                    <strong>{t('config.tls.enable')}</strong>
+                    <small>{t('config.tls.enableDescription')}</small>
+                  </div>
+                </div>
+                <label className="switch-control" title={t('config.tls.enable')}>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    aria-label={t('config.tls.enable')}
+                    checked={tlsEnabledDraft}
+                    disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
+                    onChange={(event) => {
+                      setTlsSavedStatusVisible(false);
+                      setTlsError('');
+                      setTlsEnabledDraft(event.currentTarget.checked);
+                    }}
+                  />
+                  <span className="switch-track" />
+                </label>
+              </div>
+
+              {tlsEnabledDraft ? (
+                <div className="config-tls-fields">
+                  <label className="config-network-field">
+                    <span>{t('config.tls.cert')}</span>
+                    <input
+                      className={`config-network-input ${tlsError && !tlsCertDraft.trim() ? 'error' : ''}`}
+                      type="text"
+                      value={tlsCertDraft}
+                      disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
+                      placeholder={t('config.tls.certPlaceholder')}
+                      onChange={(event) => {
+                        setTlsSavedStatusVisible(false);
+                        setTlsError('');
+                        setTlsCertDraft(event.currentTarget.value);
+                      }}
+                    />
+                    <small>{t('config.tls.certHint')}</small>
+                  </label>
+                  <label className="config-network-field">
+                    <span>{t('config.tls.key')}</span>
+                    <input
+                      className={`config-network-input ${tlsError && !tlsKeyDraft.trim() ? 'error' : ''}`}
+                      type="text"
+                      value={tlsKeyDraft}
+                      disabled={tlsSettingsLoading || tlsSettings === null || busyAction !== null}
+                      placeholder={t('config.tls.keyPlaceholder')}
+                      onChange={(event) => {
+                        setTlsSavedStatusVisible(false);
+                        setTlsError('');
+                        setTlsKeyDraft(event.currentTarget.value);
+                      }}
+                    />
+                    <small>{t('config.tls.keyHint')}</small>
+                  </label>
+                </div>
+              ) : null}
+
+              <div className={`config-tls-message ${tlsError ? 'error' : ''}`} role={tlsError ? 'alert' : undefined}>
+                {tlsError || t('config.tls.restartHint')}
+              </div>
+            </div>
+          </section>
         </div>
       ) : activeSubpage === 'software' ? (
         <div

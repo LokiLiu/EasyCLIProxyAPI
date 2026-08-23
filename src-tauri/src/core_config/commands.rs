@@ -5,6 +5,22 @@ pub(crate) fn get_lan_ipv4() -> Option<String> {
     detect_lan_ipv4().map(|address| address.to_string())
 }
 
+#[tauri::command]
+pub(crate) fn get_core_tls_settings() -> Result<CoreTlsSettings, String> {
+    current_core_tls_settings()
+}
+
+#[tauri::command]
+pub(crate) fn save_core_tls_settings(
+    cache: tauri::State<'_, AgentConfigStatusCache>,
+    settings: CoreTlsSettings,
+) -> Result<CoreTlsSettings, String> {
+    let settings = normalize_core_tls_settings(settings)?;
+    patch_core_tls_settings(&settings)?;
+    cache.clear()?;
+    Ok(settings)
+}
+
 pub(crate) fn detect_lan_ipv4() -> Option<Ipv4Addr> {
     for target in ["192.0.2.1:80", "8.8.8.8:80"] {
         let Ok(socket) = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)) else {

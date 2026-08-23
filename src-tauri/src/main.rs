@@ -1120,6 +1120,14 @@ struct GuiNetworkRoutingSettings {
     streaming_bootstrap_retries: u32,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CoreTlsSettings {
+    enabled: bool,
+    cert: String,
+    key: String,
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CoreConfigSettings {
@@ -1994,6 +2002,8 @@ fn main() {
             get_lan_ipv4,
             save_gui_settings,
             save_network_routing_settings,
+            get_core_tls_settings,
+            save_core_tls_settings,
             get_core_config_settings,
             add_core_api_key,
             update_core_api_key,
