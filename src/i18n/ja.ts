@@ -18,6 +18,7 @@ export const jaOverrides = {
   'app.nav.config': '詳細設定',
   'app.nav.thinkingAliases': 'モデルエイリアス',
   'app.nav.oauth': 'OAuth',
+  'app.nav.cliProviders': 'CLI プロバイダー',
   'app.nav.api': 'API 接続',
   'app.nav.authFiles': '認証ファイル',
   'app.nav.quota': 'クォータ照会',

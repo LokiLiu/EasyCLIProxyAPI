@@ -4,6 +4,7 @@ mod agents;
 mod app_settings;
 mod app_update;
 mod claude_catalog;
+mod cli_providers;
 mod codex_catalog;
 mod codex_sessions;
 mod configuration_watcher;
@@ -32,6 +33,7 @@ use provider_health::{
 use agents::*;
 use app_settings::*;
 use app_update::*;
+use cli_providers::*;
 use core_config::*;
 use core_runtime::*;
 use flate2::read::GzDecoder;
@@ -2069,6 +2071,9 @@ fn main() {
             delete_core_api_key,
             set_core_management_secret_key,
             clear_core_management_secret_key,
+            get_cli_provider_setup,
+            save_cli_provider_account,
+            delete_cli_provider_account,
             management_api::management_request,
             provider_health::provider_health_probe,
             management_api::upload_auth_file,

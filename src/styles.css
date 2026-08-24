@@ -2865,6 +2865,68 @@ textarea:focus-visible {
   align-content: start;
 }
 
+.cli-provider-intro {
+  max-width: 980px;
+  margin: 0;
+  color: var(--theme-7a746c);
+  line-height: var(--line-height-body);
+}
+
+.cli-provider-card .provider-title-row {
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+}
+
+.cli-provider-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--theme-f8f5ef);
+  color: var(--theme-2d2a26);
+}
+
+.cli-provider-fields label {
+  display: grid;
+  gap: 6px;
+  color: var(--theme-7a746c);
+  font-size: var(--font-size-label);
+  font-weight: 700;
+}
+
+.cli-provider-path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.cli-provider-path-row .compact-button {
+  min-width: 38px;
+  padding-inline: 10px;
+}
+
+.cli-provider-command {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--theme-e2ddd3);
+  border-radius: 8px;
+  background: var(--theme-f8f5ef);
+}
+
+.cli-provider-command code {
+  overflow: hidden;
+  color: var(--theme-2d2a26);
+  font-size: var(--font-size-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cli-provider-command .compact-button {
+  justify-self: start;
+}
+
 .oauth-hint {
   margin: 0;
   color: var(--theme-7a746c);

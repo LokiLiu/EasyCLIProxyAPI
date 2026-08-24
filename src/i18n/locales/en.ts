@@ -18,6 +18,7 @@ export const en: Record<MessageKey, string> = {
   'app.nav.config': 'Advanced Settings',
   'app.nav.thinkingAliases': 'Model Aliases',
   'app.nav.oauth': 'OAuth',
+  'app.nav.cliProviders': 'CLI Providers',
   'app.nav.api': 'API Access',
   'app.nav.authFiles': 'Auth Files',
   'app.nav.quota': 'Quota Lookup',

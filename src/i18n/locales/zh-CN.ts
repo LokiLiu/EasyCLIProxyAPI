@@ -16,6 +16,7 @@ export const zhCN = {
   'app.nav.config': '高级设置',
   'app.nav.thinkingAliases': '模型别名',
   'app.nav.oauth': 'OAuth',
+  'app.nav.cliProviders': 'CLI 模型',
   'app.nav.api': 'API 接入',
   'app.nav.authFiles': '认证文件',
   'app.nav.quota': '额度查询',

@@ -15,6 +15,7 @@ import {
   PackageOpen,
   ServerCog,
   Settings,
+  SquareTerminal,
   X,
 } from 'lucide-react';
 import appLogo from './assets/logo.jpg';
@@ -25,6 +26,7 @@ import { KernelPage } from './pages/Kernel';
 import { OAuthManagementPage } from './pages/ManagementPages';
 import { AgentsPage } from './pages/AgentsPage';
 import { UsageRecordsPage } from './pages/UsageRecordsPage';
+import { CliProvidersPage } from './pages/CliProvidersPage';
 import { languageOptions, useI18n } from './i18n';
 import { AppUpdateDialog, AppUpdateProvider, useAppUpdate } from './appUpdate';
 import { appUpdateIndicatorState } from './appUpdateModel';
@@ -57,6 +59,12 @@ const pages = [
     labelKey: 'app.nav.oauth',
     icon: LogIn,
     component: OAuthManagementPage,
+  },
+  {
+    id: 'cli-providers',
+    labelKey: 'app.nav.cliProviders',
+    icon: SquareTerminal,
+    component: CliProvidersPage,
   },
   {
     id: 'api',
