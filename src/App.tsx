@@ -2,16 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import {
-  Bot,
   Check,
   ChevronUp,
   ExternalLink,
   History,
   House,
   Languages,
-  LogIn,
   MessageCircle,
-  Network,
   PackageOpen,
   ServerCog,
   Settings,
@@ -21,10 +18,7 @@ import {
 import appLogo from './assets/logo.jpg';
 import { CoreRuntimeProvider, useCoreRuntime } from './coreRuntime';
 import { ConfigPanelPage } from './pages/ConfigPanel';
-import { ApiAccessPage } from './pages/ApiAccessPage';
 import { KernelPage } from './pages/Kernel';
-import { OAuthManagementPage } from './pages/ManagementPages';
-import { AgentsPage } from './pages/AgentsPage';
 import { UsageRecordsPage } from './pages/UsageRecordsPage';
 import { CliProvidersPage } from './pages/CliProvidersPage';
 import { languageOptions, useI18n } from './i18n';
@@ -55,34 +49,16 @@ const pages = [
     component: ConfigPanelPage,
   },
   {
-    id: 'oauth',
-    labelKey: 'app.nav.oauth',
-    icon: LogIn,
-    component: OAuthManagementPage,
-  },
-  {
     id: 'cli-providers',
     labelKey: 'app.nav.cliProviders',
     icon: SquareTerminal,
     component: CliProvidersPage,
   },
   {
-    id: 'api',
-    labelKey: 'app.nav.api',
-    icon: Network,
-    component: ApiAccessPage,
-  },
-  {
     id: 'usage-records',
     labelKey: 'app.nav.usageRecords',
     icon: History,
     component: UsageRecordsPage,
-  },
-  {
-    id: 'agents',
-    labelKey: 'app.nav.agents',
-    icon: Bot,
-    component: AgentsPage,
   },
 ] as const;
 
