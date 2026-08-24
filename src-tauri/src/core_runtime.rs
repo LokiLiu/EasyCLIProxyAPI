@@ -908,7 +908,12 @@ pub(crate) fn wait_for_core_management_port(
     child: &mut Child,
     address: SocketAddr,
 ) -> Result<(), String> {
-    let deadline = Instant::now() + Duration::from_secs(10);
+    // Provider plugins may discover their model catalogs by invoking a signed-in
+    // CLI before the HTTP listener is created. Qoder and Kiro can occasionally
+    // take longer than ten seconds on a cold start, especially after login or an
+    // application update, so keep the child under supervision for a full minute.
+    let startup_timeout = Duration::from_secs(60);
+    let deadline = Instant::now() + startup_timeout;
     loop {
         if let Some(status) = child
             .try_wait()
@@ -921,7 +926,8 @@ pub(crate) fn wait_for_core_management_port(
         }
         if Instant::now() >= deadline {
             return Err(format!(
-                "CPA 内核启动超时：10 秒内未监听管理端口 {}",
+                "CPA 内核启动超时：{} 秒内未监听管理端口 {}",
+                startup_timeout.as_secs(),
                 address.port()
             ));
         }
