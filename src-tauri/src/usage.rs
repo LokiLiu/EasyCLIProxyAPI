@@ -1751,6 +1751,11 @@ fn normalize_usage_record(value: Value, config: &GuiConfigFile) -> Result<UsageR
     let object = value
         .as_object()
         .ok_or_else(|| "CPA 使用记录必须是 JSON 对象".to_string())?;
+    if object.len() == 1
+        && (object.contains_key("refresh") || object.contains_key("support_refresh"))
+    {
+        return Err("CPA usage 订阅控制消息，不是使用记录".to_string());
+    }
     let timestamp = string_field(object, "timestamp")
         .filter(|value| DateTime::parse_from_rfc3339(value).is_ok())
         .unwrap_or_else(|| Local::now().to_rfc3339());
@@ -3357,6 +3362,21 @@ mod tests {
         assert_eq!(record.tokens.total_tokens, 30);
         assert_eq!(record.tokens.cache_read_tokens, 5);
         assert!(!record.api_key_hash.is_empty());
+    }
+
+    #[test]
+    fn rejects_usage_subscription_control_messages() {
+        let config = GuiConfigFile::default();
+        for value in [
+            serde_json::json!({"refresh": true}),
+            serde_json::json!({"support_refresh": true}),
+        ] {
+            let error = match normalize_usage_record(value, &config) {
+                Ok(_) => panic!("usage control message was accepted as a usage record"),
+                Err(error) => error,
+            };
+            assert!(error.contains("控制消息"));
+        }
     }
 
     #[test]
