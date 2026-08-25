@@ -1445,7 +1445,7 @@ agent-default-model:
     ];
     let rendered = build_deepseek_harness_settings(
         Some(existing),
-        "http://127.0.0.1:8317/v1",
+        "http://127.0.0.1:8317",
         "gpt-selected",
         &models,
     )
@@ -1466,11 +1466,8 @@ agent-default-model:
         provider["apiKeyEnv"].as_str(),
         Some(DEEPSEEK_HARNESS_CREDENTIAL)
     );
-    assert_eq!(provider["api"].as_str(), Some("openai-completions"));
-    assert_eq!(
-        provider["baseURL"].as_str(),
-        Some("http://127.0.0.1:8317/v1")
-    );
+    assert_eq!(provider["api"].as_str(), Some("anthropic-messages"));
+    assert_eq!(provider["baseURL"].as_str(), Some("http://127.0.0.1:8317"));
     assert_eq!(provider["models"][0]["id"].as_str(), Some("gpt-selected"));
     assert_eq!(
         provider["models"][0]["name"].as_str(),
@@ -1518,7 +1515,7 @@ fn deepseek_harness_inspection_requires_managed_route_selection_and_credential()
     let models = test_agent_models(&["gpt-test"]);
     fs::write(
         &paths[0],
-        build_deepseek_harness_settings(None, "http://127.0.0.1:8317/v1", "gpt-test", &models)
+        build_deepseek_harness_settings(None, "http://127.0.0.1:8317", "gpt-test", &models)
             .unwrap(),
     )
     .unwrap();

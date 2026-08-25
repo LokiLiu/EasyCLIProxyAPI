@@ -85,15 +85,39 @@ fn home_path(relative: &str) -> String {
         .into_owned()
 }
 
+fn agent_gateway_profile_path(profile: &str) -> String {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_default()
+        .join("Library/Application Support/Agent Gateway/Qoder Profiles")
+        .join(profile)
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn first_existing_file(candidates: &[String]) -> String {
+    candidates
+        .iter()
+        .find(|candidate| PathBuf::from(candidate).is_file())
+        .cloned()
+        .or_else(|| candidates.first().cloned())
+        .unwrap_or_default()
+}
+
 fn suggestions() -> Vec<CliProviderSuggestion> {
+    let qoder_cli = first_existing_file(&[
+        home_path(".qodersec/bin/qodercli"),
+        "/Applications/Qoder.app/Contents/Resources/bin/qodercli".to_string(),
+        "/Applications/Qoder IDE.app/Contents/Resources/bin/qodercli".to_string(),
+    ]);
     let values = vec![
         (
             "qoder",
             "Qoder",
             "qoder",
             "qoder",
-            "/Applications/Qoder.app/Contents/Resources/bin/qodercli".to_string(),
-            home_path(".qoder-personal"),
+            qoder_cli,
+            agent_gateway_profile_path("qoder"),
         ),
         (
             "qoderwork",
@@ -101,7 +125,7 @@ fn suggestions() -> Vec<CliProviderSuggestion> {
             "qoder",
             "qoderwork",
             "/Applications/QoderWork.app/Contents/Resources/bin/qodercli".to_string(),
-            home_path(".qoder-work"),
+            agent_gateway_profile_path("qoderwork"),
         ),
         (
             "kiro",

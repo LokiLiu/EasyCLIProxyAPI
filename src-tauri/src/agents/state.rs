@@ -742,7 +742,7 @@ pub(crate) fn fresh_agent_contents_with_oauth(
             models,
         )?]),
         AgentClient::DeepSeekHarness => Ok(vec![
-            build_deepseek_harness_settings(None, &openai_base, model, models)?,
+            build_deepseek_harness_settings(None, &root_base, model, models)?,
             build_deepseek_harness_credentials(None, api_key)?,
         ]),
         AgentClient::ZCode => Ok(vec![

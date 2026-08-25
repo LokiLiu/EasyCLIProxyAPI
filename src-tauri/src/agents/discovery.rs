@@ -3598,7 +3598,7 @@ pub(crate) fn inspect_deepseek_harness_config(
                 .map(str::to_string)
         })
         .flatten();
-    let expected_base = format!("{}/v1", managed_core_loopback_origin(port));
+    let expected_base = managed_core_loopback_origin(port);
     let credential = yaml_mapping_value(&credentials, DEEPSEEK_HARNESS_CREDENTIAL)
         .and_then(serde_norway::Value::as_str);
     let model_is_published = model.as_deref().is_some_and(|selected| {
@@ -3622,7 +3622,7 @@ pub(crate) fn inspect_deepseek_harness_config(
         && provider
             .and_then(|provider| yaml_mapping_value(provider, "api"))
             .and_then(serde_norway::Value::as_str)
-            == Some("openai-completions")
+            == Some("anthropic-messages")
         && provider
             .and_then(|provider| yaml_mapping_value(provider, "baseURL"))
             .and_then(serde_norway::Value::as_str)

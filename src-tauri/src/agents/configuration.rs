@@ -201,7 +201,7 @@ pub(crate) fn build_agent_updates_with_oauth(
                     path: paths[0].clone(),
                     after: build_deepseek_harness_settings(
                         settings_before.as_deref(),
-                        &openai_base,
+                        &root_base,
                         model,
                         models,
                     )?,
@@ -392,7 +392,7 @@ pub(crate) fn build_deepseek_harness_settings(
         for (key, value) in [
             ("displayName", "EasyCLIProxyAPI"),
             ("apiKeyEnv", DEEPSEEK_HARNESS_CREDENTIAL),
-            ("api", "openai-completions"),
+            ("api", "anthropic-messages"),
             ("baseURL", base_url),
         ] {
             provider.insert(

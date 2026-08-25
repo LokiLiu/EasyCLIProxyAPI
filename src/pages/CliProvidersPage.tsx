@@ -147,7 +147,7 @@ export function CliProvidersPage() {
 
   const copyLoginCommand = async (draft: Draft) => {
     const command = draft.provider === 'qoder'
-      ? `"${draft.cliPath}" login --config-dir "${draft.configDir}"`
+      ? `"${draft.cliPath}" --config-dir "${draft.configDir}" login`
       : `"${draft.cliPath}" login`;
     await navigator.clipboard.writeText(command);
     setNotice({ tone: 'success', text: zh ? '登录命令已复制' : 'Login command copied' });
@@ -227,7 +227,7 @@ export function CliProvidersPage() {
                   </label>
                 ) : null}
                 <div className="cli-provider-command">
-                  <code>{draft.provider === 'qoder' ? `${draft.cliPath} login --config-dir ${draft.configDir}` : `${draft.cliPath} login`}</code>
+                  <code>{draft.provider === 'qoder' ? `${draft.cliPath} --config-dir ${draft.configDir} login` : `${draft.cliPath} login`}</code>
                   <button type="button" className="secondary-button compact-button" onClick={() => void copyLoginCommand(draft)}><Copy size={14} />{zh ? '复制登录命令' : 'Copy login command'}</button>
                 </div>
               </div>
